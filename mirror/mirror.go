@@ -1,9 +1,9 @@
 package mirror
 
 import (
-	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -105,13 +105,6 @@ func NewMirror(t time.Time, id string, c *Config) (*Mirror, error) {
 		},
 	}
 	return mr, nil
-}
-
-func (m *Mirror) store(fi *apt.FileInfo, data []byte, byhash bool) error {
-	if byhash {
-		return m.storage.StoreWithHash(fi, data)
-	}
-	return m.storage.Store(fi, data)
 }
 
 func (m *Mirror) storeLink(fi *apt.FileInfo, fp string, byhash bool) error {
@@ -271,11 +264,20 @@ func (m *Mirror) updateSuite(ctx context.Context, suite string, itemMap map[stri
 }
 
 type dlResult struct {
-	status int
-	path   string
-	fi     *apt.FileInfo
-	data   []byte
-	err    error
+	status       int
+	path         string
+	tempfilename string
+	fi           *apt.FileInfo
+	err          error
+}
+
+func closeRespBody(r *http.Response) {
+	io.Copy(ioutil.Discard, r.Body)
+	r.Body.Close()
+}
+
+func closeFile(f *os.File) {
+	f.Close()
 }
 
 // download is a goroutine to download an item.
@@ -332,6 +334,8 @@ RETRY:
 		r.err = err
 		return
 	}
+	defer closeRespBody(resp)
+
 	if log.Enabled(log.LvDebug) {
 		log.Debug("downloaded", map[string]interface{}{
 			"repo":               m.id,
@@ -341,16 +345,6 @@ RETRY:
 	}
 
 	r.status = resp.StatusCode
-	data, err := ioutil.ReadAll(resp.Body)
-	resp.Body.Close()
-	if err != nil {
-		if retries < httpRetries {
-			retries++
-			goto RETRY
-		}
-		r.err = err
-		return
-	}
 	if r.status >= 500 && retries < httpRetries {
 		retries++
 		goto RETRY
@@ -359,7 +353,28 @@ RETRY:
 		return
 	}
 
-	fi2 := apt.MakeFileInfo(p, data)
+	tempfile, err := m.storage.TempFile()
+	if err != nil {
+		r.err = err
+		return
+	}
+	defer closeFile(tempfile)
+
+	fi2, err := apt.CopyWithFileInfo(tempfile, resp.Body, p)
+	if err != nil {
+		if retries < httpRetries {
+			retries++
+			goto RETRY
+		}
+		r.err = err
+		return
+	}
+	err = tempfile.Sync()
+	if err != nil {
+		r.err = errors.New("tempfile.Sync failed")
+		return
+	}
+
 	if fi != nil && !fi.Same(fi2) {
 		if len(targets) > 1 {
 			targets = targets[1:]
@@ -374,7 +389,7 @@ RETRY:
 		return
 	}
 	r.fi = fi2
-	r.data = data
+	r.tempfilename = tempfile.Name()
 }
 
 func addFileInfoToList(fi *apt.FileInfo, m map[string][]*apt.FileInfo, byhash bool) error {
@@ -430,11 +445,14 @@ func (m *Mirror) downloadRelease(ctx context.Context, suite string) (map[string]
 		}
 
 		// 200 OK
-		err := m.storage.Store(r.fi, r.data)
+		err := m.storage.StoreLink(r.fi, r.tempfilename)
 		if err != nil {
 			return nil, byhash, errors.Wrap(err, "storage.Store")
 		}
-		fil, d, err := apt.ExtractFileInfo(r.path, bytes.NewReader(r.data))
+		f, err := os.Open(r.tempfilename)
+		os.Remove(r.tempfilename)
+		defer f.Close()
+		fil, d, err := apt.ExtractFileInfo(r.path, f)
 		if err != nil {
 			return nil, byhash, errors.Wrap(err, "ExtractFileInfo: "+r.path)
 		}
@@ -595,7 +613,8 @@ func (m *Mirror) recvResult(allowMissing, byhash bool, results <-chan *dlResult)
 			return nil, fmt.Errorf("status %d for %s", r.status, r.path)
 		}
 
-		err := m.store(r.fi, r.data, byhash)
+		err := m.storeLink(r.fi, r.tempfilename, byhash)
+		os.Remove(r.tempfilename)
 		if err != nil {
 			return nil, errors.Wrap(err, "store")
 		}
