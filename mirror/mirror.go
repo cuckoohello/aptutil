@@ -121,7 +121,7 @@ func (m *Mirror) storeLink(fi *apt.FileInfo, fp string, byhash bool) error {
 	return m.storage.StoreLink(fi, fp)
 }
 
-func (m *Mirror) extractItems(indices []*apt.FileInfo, indexMap map[string][]*apt.FileInfo, itemMap map[string]*apt.FileInfo, byhash bool) error {
+func (m *Mirror) extractItems(suite string, indices []*apt.FileInfo, indexMap map[string][]*apt.FileInfo, itemMap map[string]*apt.FileInfo, byhash bool) error {
 	for _, index := range indices {
 		p := index.Path()
 		if !m.mc.MatchingIndex(p) || !apt.IsSupported(p) {
@@ -144,6 +144,10 @@ func (m *Mirror) extractItems(indices []*apt.FileInfo, indexMap map[string][]*ap
 
 		for _, fi := range fil {
 			fipath := fi.Path()
+			if isFlat(suite) && suite != "/" {
+				fipath = path.Join(suite, fipath)
+				fi.SetPath(fipath)
+			}
 			if _, ok := indexMap[fipath]; ok {
 				// already included in Release/InRelease
 				continue
@@ -263,7 +267,7 @@ func (m *Mirror) updateSuite(ctx context.Context, suite string, itemMap map[stri
 	}
 
 	// extract file information from indices
-	err = m.extractItems(indices, indexMap, itemMap, byhash)
+	err = m.extractItems(suite, indices, indexMap, itemMap, byhash)
 	if err != nil {
 		return errors.Wrap(err, m.id)
 	}

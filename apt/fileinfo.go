@@ -54,6 +54,11 @@ func (fi *FileInfo) Path() string {
 	return fi.path
 }
 
+// SetPath sets FileInfo's path
+func (fi *FileInfo) SetPath(path string) {
+	fi.path = path
+}
+
 // Size returns the number of bytes of the file body.
 func (fi *FileInfo) Size() uint64 {
 	return fi.size
