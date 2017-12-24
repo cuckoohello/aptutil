@@ -82,6 +82,10 @@ func gc(ctx context.Context, c *Config) error {
 			continue
 		}
 
+		if dentry.Name()[0] != '.' {
+			continue
+		}
+
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
