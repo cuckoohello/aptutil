@@ -5,6 +5,7 @@ import (
 	"crypto/md5"
 	"crypto/sha1"
 	"crypto/sha256"
+	"crypto/sha512"
 	"encoding/hex"
 	"encoding/json"
 	"path"
@@ -19,6 +20,7 @@ type FileInfo struct {
 	md5sum    []byte // nil means no MD5 checksum to be checked.
 	sha1sum   []byte // nil means no SHA1 ...
 	sha256sum []byte // nil means no SHA256 ...
+	sha512sum []byte // nil means no SHA512 ...
 }
 
 // Same returns true if t has the same checksum values.
@@ -39,6 +41,9 @@ func (fi *FileInfo) Same(t *FileInfo) bool {
 		return false
 	}
 	if fi.sha256sum != nil && bytes.Compare(fi.sha256sum, t.sha256sum) != 0 {
+		return false
+	}
+	if fi.sha512sum != nil && bytes.Compare(fi.sha512sum, t.sha512sum) != 0 {
 		return false
 	}
 	return true
@@ -64,10 +69,12 @@ func (fi *FileInfo) CalcChecksums(data []byte) {
 	md5sum := md5.Sum(data)
 	sha1sum := sha1.Sum(data)
 	sha256sum := sha256.Sum256(data)
+	sha512sum := sha512.Sum512(data)
 	fi.size = uint64(len(data))
 	fi.md5sum = md5sum[:]
 	fi.sha1sum = sha1sum[:]
 	fi.sha256sum = sha256sum[:]
+	fi.sha512sum = sha512sum[:]
 }
 
 // AddPrefix creates a new FileInfo by prepending prefix to the path.
@@ -119,6 +126,7 @@ type fileInfoJSON struct {
 	MD5Sum    string
 	SHA1Sum   string
 	SHA256Sum string
+	SHA512Sum string
 }
 
 // MarshalJSON implements json.Marshaler
@@ -134,6 +142,9 @@ func (fi *FileInfo) MarshalJSON() ([]byte, error) {
 	}
 	if fi.sha256sum != nil {
 		fij.SHA256Sum = hex.EncodeToString(fi.sha256sum)
+	}
+	if fi.sha512sum != nil {
+		fij.SHA512Sum = hex.EncodeToString(fi.sha512sum)
 	}
 	return json.Marshal(&fij)
 }
@@ -158,9 +169,14 @@ func (fi *FileInfo) UnmarshalJSON(data []byte) error {
 	if err != nil {
 		return errors.Wrap(err, "UnmarshalJSON for "+fij.Path)
 	}
+	sha512sum, err := hex.DecodeString(fij.SHA512Sum)
+	if err != nil {
+		return errors.Wrap(err, "UnmarshalJSON for "+fij.Path)
+	}
 	fi.md5sum = md5sum
 	fi.sha1sum = sha1sum
 	fi.sha256sum = sha256sum
+	fi.sha512sum = sha512sum
 	return nil
 }
 
