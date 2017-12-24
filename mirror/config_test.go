@@ -123,12 +123,6 @@ func TestMirrorConfig(t *testing.T) {
 		t.Error(`_, ok := m["dists/trusty-updates/InRelease"]; !ok`)
 	}
 
-	if !mc.MatchingIndex("hoge/fuga/Index.gz") {
-		t.Error(`!mc.MatchingIndex("hoge/fuga/Index.gz")`)
-	}
-	if !mc.MatchingIndex("hoge/Release") {
-		t.Error(`!mc.MatchingIndex("hoge/Release")`)
-	}
 	if mc.MatchingIndex("trusty/binary-amd64/Packages.gz") {
 		t.Error(`mc.MatchingIndex("trusty/binary-amd64/Packages.gz")`)
 	}

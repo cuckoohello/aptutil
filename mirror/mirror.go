@@ -457,8 +457,10 @@ func (m *Mirror) downloadRelease(ctx context.Context, suite string) (map[string]
 func (m *Mirror) downloadIndices(ctx context.Context,
 	filMap map[string][]*apt.FileInfo, byhash bool) ([]*apt.FileInfo, error) {
 	var fil []*apt.FileInfo
-	for _, fil2 := range filMap {
-		fil = append(fil, fil2...)
+	for p, fil2 := range filMap {
+		if m.mc.MatchingIndex(p) {
+			fil = append(fil, fil2...)
+		}
 	}
 
 	log.Info("download other indices", map[string]interface{}{

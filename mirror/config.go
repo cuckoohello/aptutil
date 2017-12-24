@@ -116,13 +116,11 @@ func rawName(p string) string {
 func (mc *MirrConfig) MatchingIndex(p string) bool {
 	rn := rawName(p)
 
-	if rn == "Index" || rn == "Release" {
-		return true
-	}
-
 	if isFlat(mc.Suites[0]) {
 		// scan Packages and Sources
 		switch rn {
+		case "Index":
+		case "Release":
 		case "Packages":
 			return true
 		case "Sources":
@@ -136,6 +134,18 @@ func (mc *MirrConfig) MatchingIndex(p string) bool {
 	archs = append(archs, "all")
 	archs = append(archs, mc.Architectures...)
 	for _, section := range mc.Sections {
+		for _, arch := range archs {
+			t := path.Join(path.Clean(section), "binary-"+arch, "Index")
+			if strings.HasSuffix(pNoExt, t) {
+				return true
+			}
+		}
+		for _, arch := range archs {
+			t := path.Join(path.Clean(section), "binary-"+arch, "Release")
+			if strings.HasSuffix(pNoExt, t) {
+				return true
+			}
+		}
 		for _, arch := range archs {
 			t := path.Join(path.Clean(section), "binary-"+arch, "Packages")
 			if strings.HasSuffix(pNoExt, t) {
