@@ -144,9 +144,14 @@ func (m *Mirror) extractItems(suite string, indices []*apt.FileInfo, indexMap ma
 
 		for _, fi := range fil {
 			fipath := fi.Path()
-			if isFlat(suite) && suite != "/" {
-				fipath = path.Join(suite, fipath)
-				fi.SetPath(fipath)
+			if isFlat(suite) {
+				if !m.mc.MatchingDeb(fipath) {
+					continue
+				}
+				if suite != "/" {
+					fipath = path.Join(suite, fipath)
+					fi.SetPath(fipath)
+				}
 			}
 			if _, ok := indexMap[fipath]; ok {
 				// already included in Release/InRelease

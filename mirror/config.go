@@ -64,9 +64,6 @@ func (mc *MirrConfig) Check() error {
 	if flat && len(mc.Sections) != 0 {
 		return errors.New("flat repository cannot have sections")
 	}
-	if flat && len(mc.Architectures) != 0 {
-		return errors.New("flat repository cannot have sections")
-	}
 	for _, suite := range mc.Suites[1:] {
 		if flat != isFlat(suite) {
 			return errors.New("mixed flat/non-flat in suites")
@@ -110,6 +107,25 @@ func rawName(p string) string {
 	base := path.Base(p)
 	ext := path.Ext(base)
 	return base[0 : len(base)-len(ext)]
+}
+
+// MatchingDeb filter according to arch
+func (mc *MirrConfig) MatchingDeb(p string) bool {
+	if len(mc.Architectures) == 0 {
+		return true
+	}
+	if !strings.HasSuffix(p, "deb") {
+		return true;
+	}
+	var archs []string
+	archs = append(archs, "all")
+	archs = append(archs, mc.Architectures...)
+	for _, arch := range archs {
+		if strings.HasSuffix(p, arch+".deb") {
+			return true
+		}
+	}
+	return false
 }
 
 // MatchingIndex returns true if mc is configured for the given index.
