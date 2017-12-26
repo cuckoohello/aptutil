@@ -125,6 +125,18 @@ func (fi *FileInfo) SHA256Path() string {
 		hex.EncodeToString(fi.sha256sum))
 }
 
+// SHA512Path returns the filepath for "by-hash" with sha512 checksum.
+// If fi has no checksum, an empty string will be returned.
+func (fi *FileInfo) SHA512Path() string {
+	if fi.sha512sum == nil {
+		return ""
+	}
+	return path.Join(path.Dir(fi.path),
+		"by-hash",
+		"SHA512",
+		hex.EncodeToString(fi.sha512sum))
+}
+
 type fileInfoJSON struct {
 	Path      string
 	Size      int64

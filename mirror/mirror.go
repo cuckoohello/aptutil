@@ -307,6 +307,7 @@ func (m *Mirror) download(ctx context.Context,
 	var retries uint
 	targets := []string{p}
 	if byhash && fi != nil {
+		targets = append(targets, fi.SHA512Path())
 		targets = append(targets, fi.SHA256Path())
 		targets = append(targets, fi.SHA1Path())
 		targets = append(targets, fi.MD5SumPath())
