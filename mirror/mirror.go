@@ -271,6 +271,11 @@ func (m *Mirror) updateSuite(ctx context.Context, suite string, itemMap map[stri
 		return errors.Wrap(err, m.id)
 	}
 
+	_, err = m.downloadOthers(ctx, indexMap)
+	if err != nil {
+		return errors.Wrap(err, m.id)
+	}
+
 	// extract file information from indices
 	err = m.extractItems(suite, indices, indexMap, itemMap, byhash)
 	if err != nil {
@@ -478,6 +483,23 @@ func (m *Mirror) downloadIndices(ctx context.Context,
 	})
 
 	return m.downloadFiles(ctx, fil, true, byhash)
+}
+
+func (m *Mirror) downloadOthers(ctx context.Context,
+	filMap map[string][]*apt.FileInfo) ([]*apt.FileInfo, error) {
+	var fil []*apt.FileInfo
+	for p, fil2 := range filMap {
+		if m.mc.MatchingOthers(p) {
+			fil = append(fil, fil2...)
+		}
+	}
+
+	log.Info("download other files", map[string]interface{}{
+		"repo":    m.id,
+		"indices": len(fil),
+	})
+
+	return m.downloadFiles(ctx, fil, true, false)
 }
 
 func (m *Mirror) downloadItems(ctx context.Context,

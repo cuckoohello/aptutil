@@ -128,6 +128,62 @@ func (mc *MirrConfig) MatchingDeb(p string) bool {
 	return false
 }
 
+// MatchingOthers allow i18n and debian-installer
+func (mc *MirrConfig) MatchingOthers(p string) bool {
+	rn := rawName(p)
+	switch rn {
+		case "Index":
+			return false
+		case "Release":
+			return false
+		case "Packages":
+			return false
+		case "Sources":
+			return false
+	}
+	if isFlat(mc.Suites[0]) {
+		return true
+	}
+
+	var archs []string
+	archs = append(archs, "all")
+	archs = append(archs, mc.Architectures...)
+	for _, arch := range archs {
+		if strings.Contains(p, "Contents-"+arch) {
+			return true
+		}
+	}
+	for _, section := range mc.Sections {
+		for _, arch := range archs {
+			t := path.Join(path.Clean(section), "binary-"+arch)
+			if strings.Contains(p, t) {
+				return true
+			}
+			t = path.Join(path.Clean(section), "debian-installer", "binary-"+arch)
+			if strings.Contains(p, t) {
+				return true
+			}
+			t = path.Join(path.Clean(section), "dep11", "Components-"+arch)
+			if strings.Contains(p, t) {
+				return true
+			}
+			t = path.Join(path.Clean(section), "dep11", "icons")
+			if strings.Contains(p, t) {
+				return true
+			}
+			t = path.Join(path.Clean(section), "i18n")
+			if strings.Contains(p, t) {
+				return true
+			}
+			t = path.Join(path.Clean(section), "installer-"+arch)
+			if strings.Contains(p, t) {
+				return true
+			}
+		}
+	}
+	return false;
+}
+
 // MatchingIndex returns true if mc is configured for the given index.
 func (mc *MirrConfig) MatchingIndex(p string) bool {
 	rn := rawName(p)
@@ -136,7 +192,9 @@ func (mc *MirrConfig) MatchingIndex(p string) bool {
 		// scan Packages and Sources
 		switch rn {
 		case "Index":
+			return true
 		case "Release":
+			return true
 		case "Packages":
 			return true
 		case "Sources":
@@ -150,6 +208,10 @@ func (mc *MirrConfig) MatchingIndex(p string) bool {
 	archs = append(archs, "all")
 	archs = append(archs, mc.Architectures...)
 	for _, section := range mc.Sections {
+		t := path.Join(path.Clean(section), "i18n", "Index")
+		if strings.HasSuffix(pNoExt, t) {
+			return true
+		}
 		for _, arch := range archs {
 			t := path.Join(path.Clean(section), "binary-"+arch, "Index")
 			if strings.HasSuffix(pNoExt, t) {
@@ -164,6 +226,12 @@ func (mc *MirrConfig) MatchingIndex(p string) bool {
 		}
 		for _, arch := range archs {
 			t := path.Join(path.Clean(section), "binary-"+arch, "Packages")
+			if strings.HasSuffix(pNoExt, t) {
+				return true
+			}
+		}
+		for _, arch := range archs {
+			t := path.Join(path.Clean(section), "debian-installer", "binary-"+arch, "Packages")
 			if strings.HasSuffix(pNoExt, t) {
 				return true
 			}
