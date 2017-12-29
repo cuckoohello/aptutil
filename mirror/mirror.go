@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"net"
 	"os"
 	"path"
 	"path/filepath"
@@ -91,6 +92,10 @@ func NewMirror(t time.Time, id string, c *Config) (*Mirror, error) {
 	transport := &http.Transport{
 		Proxy:               http.ProxyFromEnvironment,
 		MaxIdleConnsPerHost: c.MaxConns,
+		Dial: (&net.Dialer{
+			Timeout:   30 * time.Second,
+			KeepAlive: 30 * time.Second,
+		}).Dial,
 	}
 
 	mr := &Mirror{
@@ -371,6 +376,11 @@ RETRY:
 		goto RETRY
 	}
 	if r.status != 200 {
+		log.Warn("status", map[string]interface{}{
+			"repo":   m.id,
+			"path":   p,
+			"status": r.status,
+		})
 		return
 	}
 
