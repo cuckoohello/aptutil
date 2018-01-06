@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 	"net"
 	"os"
 	"path"
@@ -89,8 +90,13 @@ func NewMirror(t time.Time, id string, c *Config) (*Mirror, error) {
 		sem <- struct{}{}
 	}
 
+	proxy := http.ProxyFromEnvironment
+	if len(mc.Proxy) > 0 {
+		url, _ := url.Parse(mc.Proxy)
+		proxy = http.ProxyURL(url)
+	}
 	transport := &http.Transport{
-		Proxy:               http.ProxyFromEnvironment,
+		Proxy:               proxy,
 		MaxIdleConnsPerHost: c.MaxConns,
 		Dial: (&net.Dialer{
 			Timeout:   30 * time.Second,

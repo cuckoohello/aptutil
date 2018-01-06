@@ -42,6 +42,7 @@ func (u *tomlURL) UnmarshalText(text []byte) error {
 // MirrConfig is an auxiliary struct for Config.
 type MirrConfig struct {
 	URL           tomlURL  `toml:"url"`
+	Proxy         string   `toml:"proxy"`
 	Suites        []string `toml:"suites"`
 	Sections      []string `toml:"sections"`
 	Source        bool     `toml:"mirror_source"`
